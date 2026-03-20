@@ -48,32 +48,53 @@ const step = ref('movies');
 const movies = ref([]);
 const currentMovie = ref(null);
 const seats = ref([]);
-const lastBooking = ref(null); // ข้อมูลจะเก็บไว้ในตัวแปรนี้เท่านั้น (หายไปเมื่อ Refresh)
+const lastBooking = ref(null);
 
-onMounted(async () => {
+// เพิ่ม State สำหรับจัดการ UI สถานะ
+const loading = ref(false);
+const error = ref(null);
+
+// ฟังก์ชันดึงรายการหนังทั้งหมด
+async function fetchMovies() {
+  error.value = movies.value = null;
+  loading.value = true;
   try {
     const res = await fetch('http://localhost:3000/api/movies');
+    if (!res.ok) throw new Error('Failed to fetch movies');
     movies.value = await res.json();
-  } catch (error) {
-    console.error("Failed to fetch movies:", error);
+  } catch (err) {
+    error.value = err.toString();
+    console.error(err);
+  } finally {
+    loading.value = false;
   }
-  // หมายเหตุ: ตัดส่วนการโหลดจาก LocalStorage ออกแล้ว
-});
+}
 
+// ฟังก์ชันเลือกหนังและดึงข้อมูลที่นั่ง
 const selectMovie = async (movie) => {
   currentMovie.value = movie;
+  error.value = seats.value = null;
+  loading.value = true;
+  
   try {
     const res = await fetch(`http://localhost:3000/api/seats/${movie.id}`);
+    if (!res.ok) throw new Error('Error loading seats');
     seats.value = await res.json();
     step.value = 'seats';
-  } catch (error) {
-    alert("Error loading seats");
+  } catch (err) {
+    error.value = err.toString();
+    alert(error.value);
+  } finally {
+    loading.value = false;
   }
 };
 
+onMounted(() => {
+  fetchMovies();
+});
+
 const onBooked = (summary) => {
-  lastBooking.value = summary; // อัปเดตข้อมูลการจองล่าสุดลงใน State
-  // หมายเหตุ: ตัดการใช้ localStorage.setItem ออกแล้ว
+  lastBooking.value = summary;
   step.value = 'movies'; 
 };
 </script>
